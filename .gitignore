@@ -19,6 +19,7 @@ frontend/build/
 
 # Build distribution output
 out/
+*.zip
 
 # Editor and OS files
 .DS_Store

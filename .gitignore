@@ -1,0 +1,30 @@
+# Build directories
+build/
+sysmodule/build/
+sysmodule/out/
+frontend/build/
+
+# Compiled objects and intermediate binaries
+*.o
+*.d
+*.elf
+*.map
+*.lst
+*.nso
+*.nacp
+*.npdm
+*.pfs0
+*.nsp
+*.nro
+
+# Build distribution output
+out/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

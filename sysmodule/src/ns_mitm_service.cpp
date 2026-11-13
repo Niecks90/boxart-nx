@@ -11,14 +11,14 @@
 // Check if we should MITM this client process
 bool NsAm2MitmService::ShouldMitm(const ams::sm::MitmProcessInfo& client_info) {
     // Avoid mitm'ing our own frontend if it calls ns
-    if (client_info.program_id == ams::ncm::ProgramId{0x010000000000BD00ul}) {
+    if (client_info.program_id == ams::ncm::ProgramId{0x010000000000B0A7ul}) {
         return false;
     }
     return true;
 }
 
 bool NsRoMitmService::ShouldMitm(const ams::sm::MitmProcessInfo& client_info) {
-    if (client_info.program_id == ams::ncm::ProgramId{0x010000000000BD00ul}) {
+    if (client_info.program_id == ams::ncm::ProgramId{0x010000000000B0A7ul}) {
         return false;
     }
     return true;

@@ -43,7 +43,7 @@ boxart-nx/
 ├── out/             # Ready-to-deploy SD card file tree
 │   ├── atmosphere/
 │   │   └── contents/
-│   │       └── 010000000000BD00/
+│   │       └── 010000000000B0A7/
 │   │           ├── exefs.nsp       # Sysmodule executable PFS0
 │   │           ├── toolbox.json    # Atmosphere sysmodule descriptor
 │   │           └── flags/boot2.flag# Auto-launch on system boot
@@ -63,7 +63,7 @@ boxart-nx/
 sdmc:/
 ├── atmosphere/
 │   └── contents/
-│       └── 010000000000BD00/
+│       └── 010000000000B0A7/
 │           ├── exefs.nsp
 │           ├── toolbox.json
 │           └── flags/boot2.flag

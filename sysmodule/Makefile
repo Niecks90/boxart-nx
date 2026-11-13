@@ -57,16 +57,16 @@ $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@[ -d $(OUTDIR) ] || mkdir -p $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
-	@mkdir -p ../out/atmosphere/contents/010000000000BD00/flags/
-	@touch ../out/atmosphere/contents/010000000000BD00/flags/boot2.flag
-	@cp $(OUTDIR)/$(TARGET).nsp ../out/atmosphere/contents/010000000000BD00/exefs.nsp
-	@echo "{" > ../out/atmosphere/contents/010000000000BD00/toolbox.json
-	@echo "    \"name\": \"$(TARGET)\"," >> ../out/atmosphere/contents/010000000000BD00/toolbox.json
-	@echo "    \"tid\": \"010000000000BD00\"," >> ../out/atmosphere/contents/010000000000BD00/toolbox.json
-	@echo "    \"requires_reboot\": true," >> ../out/atmosphere/contents/010000000000BD00/toolbox.json
-	@echo "    \"sysmodule\": true," >> ../out/atmosphere/contents/010000000000BD00/toolbox.json
-	@echo "    \"version\": \"$(VERSION)\"" >> ../out/atmosphere/contents/010000000000BD00/toolbox.json
-	@echo "}" >> ../out/atmosphere/contents/010000000000BD00/toolbox.json
+	@mkdir -p ../out/atmosphere/contents/010000000000B0A7/flags/
+	@touch ../out/atmosphere/contents/010000000000B0A7/flags/boot2.flag
+	@cp $(OUTDIR)/$(TARGET).nsp ../out/atmosphere/contents/010000000000B0A7/exefs.nsp
+	@echo "{" > ../out/atmosphere/contents/010000000000B0A7/toolbox.json
+	@echo "    \"name\": \"$(TARGET)\"," >> ../out/atmosphere/contents/010000000000B0A7/toolbox.json
+	@echo "    \"tid\": \"010000000000B0A7\"," >> ../out/atmosphere/contents/010000000000B0A7/toolbox.json
+	@echo "    \"requires_reboot\": true," >> ../out/atmosphere/contents/010000000000B0A7/toolbox.json
+	@echo "    \"sysmodule\": true," >> ../out/atmosphere/contents/010000000000B0A7/toolbox.json
+	@echo "    \"version\": \"$(VERSION)\"" >> ../out/atmosphere/contents/010000000000B0A7/toolbox.json
+	@echo "}" >> ../out/atmosphere/contents/010000000000B0A7/toolbox.json
 
 clean:
 	@echo "Cleaning sysmodule..."

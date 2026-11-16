@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <SDL.h>
 
 namespace BoxArt {
 
@@ -22,11 +21,8 @@ struct SteamGridResult {
     std::string thumb_url;
     bool nsfw = false;
 
-    // Downloaded thumbnail texture for UI preview
-    SDL_Texture* thumb_texture = nullptr;
+    // Downloaded thumbnail data for UI preview
     std::vector<uint8_t> thumb_data;
-
-    void FreeTexture();
 };
 
 struct SteamGameMatch {
@@ -59,9 +55,6 @@ public:
 
     // Downloads image from URL into memory buffer
     bool DownloadImage(const std::string& url, std::vector<uint8_t>& out_data, std::string& out_error);
-
-    // Downloads and creates an SDL texture for preview
-    SDL_Texture* LoadPreviewTexture(SDL_Renderer* renderer, const std::string& url);
 
 private:
     std::string m_api_key;

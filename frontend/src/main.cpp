@@ -4,37 +4,35 @@
  */
 
 #include <switch.h>
-#include "gui.hpp"
-#include <cstdio>
+#include <borealis.hpp>
+#include "main_activity.hpp"
 
 int main(int argc, char* argv[]) {
-    // Initialize libnx services
-    bool socket_initialized = false;
-    Result rc = socketInitializeDefault();
-    if (R_SUCCEEDED(rc)) {
-        socket_initialized = true;
-    }
-
-    rc = nsInitialize();
+    // Initialize NS service for application metadata access
+    Result rc = nsInitialize();
     if (R_FAILED(rc)) {
-        if (socket_initialized) socketExit();
+        brls::Logger::error("Failed to initialize ns service: {:#x}", rc);
         return 1;
     }
 
-    // Run GUI application
-    {
-        BoxArt::Gui gui;
-        if (gui.Initialize()) {
-            gui.Run();
-        }
-        gui.Shutdown();
+    // Set Borealis logging
+    brls::Logger::setLogLevel(brls::LogLevel::LOG_INFO);
+
+    // Initialize Borealis framework
+    if (!brls::Application::init()) {
+        brls::Logger::error("Unable to initialize Borealis");
+        nsExit();
+        return 1;
     }
 
-    // Exit libnx services
+    // Push Main Horizon OS Activity
+    brls::Application::pushActivity(new BoxArt::MainActivity());
+
+    // Main event loop
+    while (brls::Application::mainLoop())
+        ;
+
+    // Clean exit
     nsExit();
-    if (socket_initialized) {
-        socketExit();
-    }
-
     return 0;
 }

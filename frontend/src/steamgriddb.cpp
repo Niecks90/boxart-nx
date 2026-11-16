@@ -4,7 +4,6 @@
  */
 
 #include "steamgriddb.hpp"
-#include "inventory.hpp"
 
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
@@ -17,14 +16,6 @@
 using json = nlohmann::json;
 
 namespace BoxArt {
-
-void SteamGridResult::FreeTexture() {
-    if (thumb_texture) {
-        SDL_DestroyTexture(thumb_texture);
-        thumb_texture = nullptr;
-    }
-    thumb_data.clear();
-}
 
 SteamGridDBClient::SteamGridDBClient() {
     LoadApiKey();
@@ -48,49 +39,61 @@ bool SteamGridDBClient::LoadApiKey() {
         size_t eq = s.find('=');
         if (eq != std::string::npos) {
             std::string k = s.substr(start, eq - start);
-            size_t k_end = k.find_last_not_of(" \t");
+            std::string v = s.substr(eq + 1);
+
+            // Trim key
+            size_t k_end = k.find_last_not_of(" \t\r\n");
             if (k_end != std::string::npos) k = k.substr(0, k_end + 1);
 
-            if (k == "api_key" || k == "apiKey") {
-                std::string v = s.substr(eq + 1);
-                size_t v_start = v.find_first_not_of(" \t\r\n\"");
-                size_t v_end = v.find_last_not_of(" \t\r\n\"");
-                if (v_start != std::string::npos && v_end != std::string::npos && v_end >= v_start) {
-                    m_api_key = v.substr(v_start, v_end - v_start + 1);
-                }
+            // Trim value
+            size_t v_start = v.find_first_not_of(" \t\r\n");
+            size_t v_end = v.find_last_not_of(" \t\r\n");
+            if (v_start != std::string::npos && v_end != std::string::npos) {
+                v = v.substr(v_start, v_end - v_start + 1);
+            } else {
+                v.clear();
+            }
+
+            if (k == "api_key" || k == "apiKey" || k == "key") {
+                m_api_key = v;
             }
         }
     }
+
     std::fclose(f);
     return !m_api_key.empty();
 }
 
 void SteamGridDBClient::SetApiKey(const std::string& key) {
     m_api_key = key;
+
     mkdir("sdmc:/config", 0777);
     mkdir("sdmc:/config/boxart-nx", 0777);
+
     FILE* f = std::fopen(CONFIG_PATH, "w");
     if (f) {
-        std::fprintf(f, "[steamgriddb]\napi_key = %s\n", key.c_str());
+        std::fprintf(f, "[steamgriddb]\napi_key=%s\n", m_api_key.c_str());
         std::fclose(f);
     }
 }
 
 static size_t WriteStringCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    size_t realsize = size * nmemb;
-    auto* s = static_cast<std::string*>(userp);
-    s->append(static_cast<char*>(contents), realsize);
-    return realsize;
+    size_t total_size = size * nmemb;
+    std::string* str = static_cast<std::string*>(userp);
+    str->append(static_cast<char*>(contents), total_size);
+    return total_size;
 }
 
 static size_t WriteBinaryCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    size_t realsize = size * nmemb;
-    auto* mem = static_cast<std::vector<uint8_t>*>(userp);
-    mem->insert(mem->end(), static_cast<uint8_t*>(contents), static_cast<uint8_t*>(contents) + realsize);
-    return realsize;
+    size_t total_size = size * nmemb;
+    auto* vec = static_cast<std::vector<uint8_t>*>(userp);
+    const uint8_t* bytes = static_cast<const uint8_t*>(contents);
+    vec->insert(vec->end(), bytes, bytes + total_size);
+    return total_size;
 }
 
 bool SteamGridDBClient::PerformGetRequest(const std::string& url, std::string& out_response, std::string& out_error) {
+    out_response.clear();
     CURL* curl = curl_easy_init();
     if (!curl) {
         out_error = "curl_easy_init failed";
@@ -98,9 +101,10 @@ bool SteamGridDBClient::PerformGetRequest(const std::string& url, std::string& o
     }
 
     struct curl_slist* headers = nullptr;
-    std::string auth_header = "Authorization: Bearer " + m_api_key;
-    headers = curl_slist_append(headers, auth_header.c_str());
-    headers = curl_slist_append(headers, "User-Agent: boxart-nx/1.0.0");
+    if (!m_api_key.empty()) {
+        std::string auth_header = "Authorization: Bearer " + m_api_key;
+        headers = curl_slist_append(headers, auth_header.c_str());
+    }
     headers = curl_slist_append(headers, "Accept: application/json");
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -112,6 +116,7 @@ bool SteamGridDBClient::PerformGetRequest(const std::string& url, std::string& o
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "boxart-nx/1.0.0");
 
     CURLcode res = curl_easy_perform(curl);
     long http_code = 0;
@@ -121,45 +126,59 @@ bool SteamGridDBClient::PerformGetRequest(const std::string& url, std::string& o
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        out_error = std::string("CURL error: ") + curl_easy_strerror(res);
+        out_error = std::string("Network error: ") + curl_easy_strerror(res);
         return false;
     }
 
     if (http_code != 200) {
-        out_error = "HTTP error " + std::to_string(http_code) + " (Check your SteamGridDB API key)";
+        out_error = "HTTP error " + std::to_string(http_code);
         return false;
     }
 
     return true;
 }
 
+static std::string UrlEncode(const std::string& str) {
+    std::string encoded;
+    for (char c : str) {
+        if (isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            encoded += c;
+        } else if (c == ' ') {
+            encoded += "%20";
+        } else {
+            char buf[4];
+            std::snprintf(buf, sizeof(buf), "%%%02X", (unsigned char)c);
+            encoded += buf;
+        }
+    }
+    return encoded;
+}
+
 bool SteamGridDBClient::SearchGames(const std::string& query, std::vector<SteamGameMatch>& out_matches, std::string& out_error) {
     out_matches.clear();
-    if (!HasApiKey()) {
-        out_error = "SteamGridDB API key is missing. Add it to sdmc:/config/boxart-nx/config.ini";
+    if (m_api_key.empty()) {
+        out_error = "SteamGridDB API key not set";
         return false;
     }
 
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        out_error = "Failed to initialize curl";
-        return false;
-    }
+    std::string enc = UrlEncode(query);
+    std::string url = "https://www.steamgriddb.com/api/v2/search/autocomplete/" + enc;
 
-    char* escaped = curl_easy_escape(curl, query.c_str(), static_cast<int>(query.length()));
-    std::string enc_query = escaped ? escaped : query;
-    if (escaped) curl_free(escaped);
-    curl_easy_cleanup(curl);
-
-    std::string url = "https://www.steamgriddb.com/api/v2/search/autocomplete/" + enc_query;
     std::string response;
     if (!PerformGetRequest(url, response, out_error)) {
         return false;
     }
 
-    auto j = json::parse(response, nullptr, false);
-    if (j.is_discarded() || !j.contains("success") || !j["success"].get<bool>()) {
-        out_error = "Failed to parse search response from SteamGridDB";
+    json j;
+    try {
+        j = json::parse(response);
+    } catch (const std::exception& e) {
+        out_error = std::string("JSON parse error: ") + e.what();
+        return false;
+    }
+
+    if (!j.value("success", false)) {
+        out_error = "API returned failure";
         return false;
     }
 
@@ -180,21 +199,30 @@ bool SteamGridDBClient::SearchGames(const std::string& query, std::vector<SteamG
 
 bool SteamGridDBClient::FetchGridsForGame(int game_id, std::vector<SteamGridResult>& out_results, std::string& out_error) {
     out_results.clear();
-    if (!HasApiKey()) {
-        out_error = "SteamGridDB API key is missing";
+    if (m_api_key.empty()) {
+        out_error = "SteamGridDB API key not set";
         return false;
     }
 
-    // Request square dimensions 600x600 and 1024x1024
-    std::string url = "https://www.steamgriddb.com/api/v2/grids/game/" + std::to_string(game_id) + "?dimensions=600x600,1024x1024";
+    // Request square grids (dimensions 600x600, 1024x1024)
+    std::string url = "https://www.steamgriddb.com/api/v2/grids/game/" + std::to_string(game_id) +
+                      "?dimensions=600x600,1024x1024&mimes=image/png,image/jpeg,image/webp&types=static";
+
     std::string response;
     if (!PerformGetRequest(url, response, out_error)) {
         return false;
     }
 
-    auto j = json::parse(response, nullptr, false);
-    if (j.is_discarded() || !j.contains("success") || !j["success"].get<bool>()) {
-        out_error = "Failed to parse grid covers response from SteamGridDB";
+    json j;
+    try {
+        j = json::parse(response);
+    } catch (const std::exception& e) {
+        out_error = std::string("JSON parse error: ") + e.what();
+        return false;
+    }
+
+    if (!j.value("success", false)) {
+        out_error = "API returned failure";
         return false;
     }
 
@@ -250,15 +278,6 @@ bool SteamGridDBClient::DownloadImage(const std::string& url, std::vector<uint8_
     }
 
     return true;
-}
-
-SDL_Texture* SteamGridDBClient::LoadPreviewTexture(SDL_Renderer* renderer, const std::string& url) {
-    std::vector<uint8_t> data;
-    std::string err;
-    if (!DownloadImage(url, data, err)) {
-        return nullptr;
-    }
-    return CreateTextureFromMemory(renderer, data.data(), data.size());
 }
 
 } // namespace BoxArt

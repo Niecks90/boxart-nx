@@ -14,10 +14,13 @@ A complete, non-destructive game icon manager for the Nintendo Switch Home Menu 
   - Static memory heap strictly capped at **128 KB** (well within Atmosphere's $\le 2\text{ MB}$ sysmodule constraint).
   - Zero dynamic heap allocations in critical IPC dispatch loops.
   - Intercepts `ns:am2` and `ns:ro` (commands 0, 5, 6, 18, 19, 20, 21, 22), supporting all Horizon OS firmware versions from FW 1.0.0 through 21.0.0+.
-- **Fluid Controller-Driven Frontend (.nro):**
-  - Powered by **SDL2 + Dear ImGui** (using native hardware-accelerated `SDL_Renderer2`).
-  - Full Joy-Con and Pro Controller gamepad navigation (`ImGuiConfigFlags_NavEnableGamepad`).
-  - Lists all installed titles with current icon previews, publisher info, and custom status badges.
+- **Native Horizon OS Frontend (.nro):**
+  - Powered by **xfangfang/borealis** for a 100% native Nintendo Switch UI look and feel (D-Pad, analog sticks, touchscreen, native sound cues, and signature cyan glow highlight).
+  - Virtualized list using `brls::RecyclerFrame` with instant reuse: textures are loaded on demand and freed offscreen, guaranteeing zero VRAM starvation or memory leaks.
+  - Background asynchronous inventory loading with a smooth Horizon progress spinner (`brls::ProgressSpinner`), eliminating initial black screens.
+  - Native Switch button layout (`Ⓐ` Confirm / Select, `Ⓑ` Back / Quit, `Ⓧ` Restore original icon).
+  - Native software keyboard integration (`SwitchImeManager`) for SteamGridDB searches and API key entry.
+  - Header with dynamic status badge monitoring Atmosphere MitM sysmodule status (Active PID / Inactive).
 - **Strict JPEG Normalization Pipeline:**
   - Decodes PNG, JPEG, BMP (`stb_image`) and WebP (`libwebp`).
   - Center-crops square aspect ratio and resizes to standard **256×256 pixels** (`stb_image_resize2`).
@@ -39,7 +42,7 @@ A complete, non-destructive game icon manager for the Nintendo Switch Home Menu 
 ```
 boxart-nx/
 ├── sysmodule/       # Atmosphere MitM Sysmodule (libstratosphere, C++20)
-├── frontend/        # Frontend GUI Application (SDL2, ImGui, libjpeg-turbo, libcurl)
+├── frontend/        # Frontend GUI Application (xfangfang/borealis, libjpeg-turbo, libcurl)
 ├── out/             # Ready-to-deploy SD card file tree
 │   ├── atmosphere/
 │   │   └── contents/

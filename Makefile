@@ -3,6 +3,9 @@
 # Builds both sysmodule and frontend, and prepares out/ directory structure.
 #---------------------------------------------------------------------------------
 
+export DEVKITPRO ?= /opt/devkitpro
+export DEVKITA64 ?= $(DEVKITPRO)/devkitA64
+
 .PHONY: all sysmodule frontend dist clean distclean
 
 all: sysmodule frontend

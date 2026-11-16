@@ -20,14 +20,11 @@
 namespace BoxArt {
 
 void GameItem::FreeTextures() {
-    if (original_icon_texture) {
-        SDL_DestroyTexture(original_icon_texture);
-        original_icon_texture = nullptr;
-    }
     if (current_icon_texture) {
         SDL_DestroyTexture(current_icon_texture);
         current_icon_texture = nullptr;
     }
+    icon_loaded = false;
 }
 
 Inventory::~Inventory() {
@@ -128,29 +125,36 @@ static std::string ToLower(const std::string& str) {
     return lower;
 }
 
-void Inventory::RefreshGameTextures(SDL_Renderer* renderer, GameItem& item) {
-    item.has_custom_cover = JpegPipeline::HasCustomCover(item.title_id);
+void Inventory::EnsureIconLoaded(SDL_Renderer* renderer, GameItem& item) {
+    if (item.icon_loaded && item.current_icon_texture != nullptr) {
+        return;
+    }
 
     if (item.current_icon_texture) {
         SDL_DestroyTexture(item.current_icon_texture);
         item.current_icon_texture = nullptr;
     }
 
+    item.has_custom_cover = JpegPipeline::HasCustomCover(item.title_id);
     if (item.has_custom_cover) {
         std::string path = JpegPipeline::GetCoverPath(item.title_id);
         item.current_icon_texture = CreateTextureFromFile(renderer, path);
     }
 
-    // Fallback to original texture if custom texture failed to load or doesn't exist
-    if (!item.current_icon_texture && item.original_icon_texture) {
-        // Recreate texture from original jpeg bytes so it's fresh
-        if (!item.original_icon_jpeg.empty()) {
-            item.current_icon_texture = CreateTextureFromMemory(renderer, item.original_icon_jpeg.data(), item.original_icon_jpeg.size());
-        }
+    // Fallback to original icon texture from NAND data
+    if (!item.current_icon_texture && !item.original_icon_jpeg.empty()) {
+        item.current_icon_texture = CreateTextureFromMemory(renderer, item.original_icon_jpeg.data(), item.original_icon_jpeg.size());
     }
+
+    item.icon_loaded = true;
 }
 
-bool Inventory::ScanImportDirectory(SDL_Renderer* renderer) {
+void Inventory::RefreshGameTextures(SDL_Renderer* renderer, GameItem& item) {
+    item.FreeTextures();
+    EnsureIconLoaded(renderer, item);
+}
+
+bool Inventory::ScanImportDirectory(SDL_Renderer* /*renderer*/) {
     for (auto& item : m_import_files) {
         if (item.thumbnail_texture) {
             SDL_DestroyTexture(item.thumbnail_texture);
@@ -179,7 +183,7 @@ bool Inventory::ScanImportDirectory(SDL_Renderer* renderer) {
             ImportFileItem item;
             item.filename = fname;
             item.full_path = std::string(dir_path) + "/" + fname;
-            item.thumbnail_texture = CreateTextureFromFile(renderer, item.full_path);
+            item.thumbnail_texture = nullptr; // Lazy-loaded when browse modal opens
             m_import_files.push_back(std::move(item));
         }
     }
@@ -201,6 +205,7 @@ bool Inventory::ScanImportDirectory(SDL_Renderer* renderer) {
 }
 
 bool Inventory::ReloadGames(SDL_Renderer* renderer, std::string& out_error) {
+    (void)out_error;
     Clear();
 
     // Allocate NsApplicationControlData dynamically on heap to avoid huge stack allocation (144 KB)
@@ -247,14 +252,12 @@ bool Inventory::ReloadGames(SDL_Renderer* renderer, std::string& out_error) {
                     game.version = "1.0.0";
                 }
 
-                // Copy original icon JPEG data
+                // Copy original icon raw JPEG bytes (zero GPU decode at startup)
                 if (actual_size > sizeof(NacpStruct)) {
                     size_t icon_size = static_cast<size_t>(actual_size - sizeof(NacpStruct));
                     if (icon_size <= sizeof(control_data->icon)) {
                         game.original_icon_jpeg.resize(icon_size);
                         std::memcpy(game.original_icon_jpeg.data(), control_data->icon, icon_size);
-
-                        game.original_icon_texture = CreateTextureFromMemory(renderer, game.original_icon_jpeg.data(), game.original_icon_jpeg.size());
                     }
                 }
             } else {
@@ -263,8 +266,10 @@ bool Inventory::ReloadGames(SDL_Renderer* renderer, std::string& out_error) {
                 game.version = "1.0.0";
             }
 
-            // Refresh current cover texture (custom or original)
-            RefreshGameTextures(renderer, game);
+            // Check if custom cover file is already on SD card
+            game.has_custom_cover = JpegPipeline::HasCustomCover(game.title_id);
+            game.icon_loaded = false;
+            game.current_icon_texture = nullptr;
 
             m_games.push_back(std::move(game));
         }
@@ -277,7 +282,7 @@ bool Inventory::ReloadGames(SDL_Renderer* renderer, std::string& out_error) {
         return a.name < b.name;
     });
 
-    // Scan import directory for matching custom covers
+    // Scan import directory for matching filenames
     ScanImportDirectory(renderer);
 
     return true;

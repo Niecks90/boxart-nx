@@ -29,12 +29,12 @@ struct GameItem {
 
     bool has_custom_cover = false;
 
-    // Original icon from NsApplicationControlData
+    // Original icon raw bytes from NsApplicationControlData (128 KB max)
     std::vector<uint8_t> original_icon_jpeg;
-    SDL_Texture* original_icon_texture = nullptr;
 
-    // Current displayed icon texture (custom if applied, else original)
+    // Current displayed icon texture (lazy-loaded when item is visible)
     SDL_Texture* current_icon_texture = nullptr;
+    bool icon_loaded = false;
 
     // Matched import file if found in import directory
     std::string matched_import_path;
@@ -47,13 +47,16 @@ public:
     Inventory() = default;
     ~Inventory();
 
-    // Reloads all installed applications from NS
+    // Reloads all installed applications from NS (fast metadata scan, no upfront JPEG decoding)
     bool ReloadGames(SDL_Renderer* renderer, std::string& out_error);
 
-    // Scans sdmc:/config/boxart-nx/import/ for PNG, JPG, WebP images
+    // Scans sdmc:/config/boxart-nx/import/ for PNG, JPG, WebP images (filenames only)
     bool ScanImportDirectory(SDL_Renderer* renderer);
 
-    // Refresh cover status and active texture for a specific game
+    // Lazy loads icon texture for a specific game when visible
+    void EnsureIconLoaded(SDL_Renderer* renderer, GameItem& item);
+
+    // Force reload cover status and texture for a specific game (e.g. after apply/restore)
     void RefreshGameTextures(SDL_Renderer* renderer, GameItem& item);
 
     std::vector<GameItem>& GetGames() { return m_games; }

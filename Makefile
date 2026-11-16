@@ -3,9 +3,16 @@
 # Builds both sysmodule and frontend, and prepares out/ directory structure.
 #---------------------------------------------------------------------------------
 
-.PHONY: all sysmodule frontend clean distclean
+.PHONY: all sysmodule frontend dist clean distclean
 
 all: sysmodule frontend
+
+dist: all
+	@echo "=========================================="
+	@echo "Packaging release zip (boxart-nx.zip)..."
+	@echo "=========================================="
+	@cd out && zip -FSr ../boxart-nx.zip atmosphere switch
+	@echo "Done: boxart-nx.zip"
 
 sysmodule:
 	@echo "=========================================="

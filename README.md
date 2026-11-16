@@ -100,12 +100,15 @@ api_key = YOUR_STEAMGRIDDB_API_KEY
 
 | Button | Action |
 |---|---|
-| **D-Pad / Left Stick** | Navigate game list and menus |
-| **A** | Select / Apply cover |
+| **D-Pad / Left Stick** | Scroll games carousel / navigate modal menus |
+| **L / R (Bumpers)** | Jump ±5 games in the carousel |
+| **A** | Manage cover / Confirm / Activate |
 | **B** | Back / Close modal dialog |
-| **X** | Search SteamGridDB online for selected game |
-| **Y** | Restore original official icon |
-| **+ (Plus)** | Exit application |
+| **X** | Quick search SteamGridDB for selected game |
+| **Y** | Quick restore official NAND icon |
+| **- (Minus)** | Settings (Configure SteamGridDB API key) |
+| **+ (Plus)** | Safely exit application |
+| **Touchscreen** | Tap any game card to select or open management menu |
 
 ---
 
